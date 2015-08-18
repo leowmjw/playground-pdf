@@ -4,6 +4,10 @@
 /results/
 /logs/
 /archive/
+HansardParser/example
+/HansardParser/nbproject/private/
+/HansardParser/build/
+/HansardParser/dist/
 
 # Java class
 *.class
@@ -16,3 +20,8 @@
 *.war
 *.ear
 
+/nbproject/private/
+/dist/
+/build/
+/HansardParser/nbproject/private/
+/HansardParser/build/
