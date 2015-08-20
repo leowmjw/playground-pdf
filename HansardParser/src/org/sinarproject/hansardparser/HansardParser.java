@@ -44,11 +44,11 @@ public class HansardParser {
         HashMap<String, String> mySetString;
         mySetString = HansardParser.getHalaman(reader);
         // Itertae thoug it .. use example here and here ..
-        
+
         int n;
         // n = reader.getNumberOfPages();
         // For test of extraction and regexp; use first 5 pages ..
-        n = 3;
+        n = 2;
         for (int i = 2; i < n; i++) {
             // PdfDictionary pageDict = reader.getPageN(i);
             // use location based strategy
@@ -58,11 +58,16 @@ public class HansardParser {
             out.println(content);
         }
     }
-    
+
     private static HashMap<String, String> getHalaman(PdfReader myreader) {
         try {
+            // OPTIONE #1:
             // RegExp for Halaman is .. /(.*)\(Halaman.*(\d+)\)/ig
-            Pattern pattern_halaman = Pattern.compile("(.*)\\(Halaman.*(\\d+)\\)", Pattern.CASE_INSENSITIVE);
+            // Pattern pattern_halaman = Pattern.compile("(.*)\\(Halaman.*(\\d+)\\)", Pattern.CASE_INSENSITIVE);
+            // OPTION #2:
+            // Better pattern is --> http://www.regexr.com/3bkfc
+            // /(.*?\n?.*?)\(Halaman.*?(\d+)\).*?\n/igm
+            Pattern pattern_halaman = Pattern.compile("(.*?\\n?.*?)\\(Halaman.*?(\\d+)\\).*?\\n", Pattern.CASE_INSENSITIVE | Pattern.MULTILINE);
             // Title name is $1
             // Halaman # is $2
             // Extract out and log every matched items ??
@@ -70,21 +75,37 @@ public class HansardParser {
 
             HashMap<String, String> myHalaman = null;
             myHalaman = new HashMap<>();
-            
+
             Matcher halaman_matcher = pattern_halaman.matcher(content);
             while (halaman_matcher.find()) {
-                String halaman_title = halaman_matcher.group(1);
-                String halaman_page_number = halaman_matcher.group(2);
+                // Replace all until : pattern ..??
+                Pattern pattern_header = Pattern.compile(".*\\:", Pattern.CASE_INSENSITIVE);
+                // Replace anything NOT valid Title -->  [^\(\)\-\.\w\d]           
+                Pattern pattern_valid_title = Pattern.compile("[^\\(\\)\\-\\. \\w\\d]", Pattern.CASE_INSENSITIVE);
+                // Replace multiple spaces into one space
+                Pattern pattern_single_spacing = Pattern.compile("[ ]+");
+                String halaman_title
+                        = pattern_single_spacing.matcher(
+                                pattern_valid_title.matcher(
+                                        pattern_header.matcher(
+                                                halaman_matcher.group(1)
+                                        ).replaceAll("")
+                                ).replaceAll("")
+                        ).replaceAll(" ").trim();
+                out.println("Title is: " + halaman_title);
+                String halaman_page_number = halaman_matcher.group(2).trim();
+                out.println("Page is: " + halaman_page_number);
+                // TODO: To be replced with the finalized version ..
                 myHalaman.put(halaman_title, halaman_page_number);
                 // Actually do the copy here??
             }
-            
+
             return myHalaman;
         } catch (IOException ex) {
             Logger.getLogger(HansardParser.class.getName()).log(Level.SEVERE, null, ex);
         }
         return null;
-        
+
     }
 
     /**
@@ -92,7 +113,6 @@ public class HansardParser {
      * @param args
      * @throws IOException
      */
-
     public static void IFail(String[] args) throws IOException {
         // TODO code application logic here
         out.println("Sinar Project's Hansard Parser ..");
