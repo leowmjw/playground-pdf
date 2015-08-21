@@ -5,6 +5,7 @@
  */
 package org.sinarproject.hansardparser;
 
+import com.itextpdf.text.DocumentException;
 import java.io.IOException;
 import static java.lang.System.out;
 import java.util.Set;
@@ -15,7 +16,12 @@ import com.itextpdf.text.pdf.PdfName;
 import com.itextpdf.text.pdf.PdfReader;
 import com.itextpdf.text.pdf.PdfString;
 import com.itextpdf.text.pdf.parser.PdfTextExtractor;
+import java.io.FileNotFoundException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
@@ -32,6 +38,8 @@ public class HansardParser {
      */
     public static String SOURCE
             = "example/DR-PARLIMEN/DR-18062015.PDF";
+    // PdfReader for multiple uses?
+    private static PdfReader my_reader;
 
     /**
      * @param args the command line arguments
@@ -41,9 +49,12 @@ public class HansardParser {
         // TODO code application logic here
         out.println("Sinar Project's Hansard Parser ..");
         PdfReader reader = new PdfReader(HansardParser.SOURCE);
-        HashMap<String, String> mySetString;
-        mySetString = HansardParser.getHalaman(reader);
+        // Assign it for later reuse ..
+        HansardParser.my_reader = reader;
+        Map<Integer, List<String>> myHalamanHash;
+        myHalamanHash = HansardParser.getHalaman(reader);
         // Itertae thoug it .. use example here and here ..
+        HansardParser.splitHalamanbyTopic(myHalamanHash);
 
         int n;
         // n = reader.getNumberOfPages();
@@ -59,7 +70,41 @@ public class HansardParser {
         }
     }
 
-    private static HashMap<String, String> getHalaman(PdfReader myreader) {
+    private void copyHalamanbyTopic(Integer start_page, Integer end_page, String topicName)
+            throws FileNotFoundException, DocumentException, IOException {
+        // process topicName by replacing space with _?? or leave it as is?
+
+        // Apply the offset ..
+    }
+
+    private static void splitHalamanbyTopic(Map<Integer, List<String>> myHalamanHash) {
+        // Iterate through the hash ..
+        // Form final filename
+        // Copy over the pages ..
+        int topicIndex = 0;
+        int currentIndex = 0;
+        ArrayList<Integer> Halamans = new ArrayList<>();
+        // Halamans[0] = topic, start_page, end_page (1,1)
+        // Halamans[1] = topic, start_page, end_page (1,26)
+        // Halamans[2] = topic, start_page, end_page (27,60)
+        // Halamans[3] = topic, start_page, end_page (61
+
+        // Actual Start page (Start page + 1)
+        // Actual End page (Page Number - 1)
+        out.println("Sorted Pages and Title");
+        out.println("=======================");
+        // Current index - 1, fill in the end_page based on start_page - 1; if start_page != 1, else fill 1
+        for (Integer myStart_Page : myHalamanHash.keySet()) {
+            // Current start will inform the previous end if != 1
+            List<String> myTopicList = myHalamanHash.get(myStart_Page);
+            for (String myTopic : myTopicList) {
+                out.println("Page: " + myStart_Page + " Topic: " + myTopic);
+            }
+            
+        }
+    }
+
+    private static Map<Integer, List<String>> getHalaman(PdfReader myreader) {
         try {
             // OPTIONE #1:
             // RegExp for Halaman is .. /(.*)\(Halaman.*(\d+)\)/ig
@@ -73,8 +118,9 @@ public class HansardParser {
             // Extract out and log every matched items ??
             String content = PdfTextExtractor.getTextFromPage(myreader, 1);
 
-            HashMap<String, String> myHalaman = null;
-            myHalaman = new HashMap<>();
+            // Use TreeMap to have native sort in keys
+            Map<Integer, List<String>> myHalaman = null;
+            myHalaman = new TreeMap<>();
 
             Matcher halaman_matcher = pattern_halaman.matcher(content);
             while (halaman_matcher.find()) {
@@ -93,11 +139,25 @@ public class HansardParser {
                                 ).replaceAll("")
                         ).replaceAll(" ").trim();
                 out.println("Title is: " + halaman_title);
-                String halaman_page_number = halaman_matcher.group(2).trim();
-                out.println("Page is: " + halaman_page_number);
-                // TODO: To be replced with the finalized version ..
-                myHalaman.put(halaman_title, halaman_page_number);
+                String halaman_page_number_str = halaman_matcher.group(2).trim();
+                out.println("Start Page is: " + halaman_page_number_str);
+                // This is the page number ..
+                Integer halaman_page_number = new Integer(halaman_page_number_str);
+                // Get the list from the current key; which is page number ...
+                List<String> l;
+                l = myHalaman.get(halaman_page_number);
+                if (l == null) {
+                    myHalaman.put(halaman_page_number, l = new ArrayList<String>());
+                }
+                l.add(halaman_title);
+                // myHalaman.put(halaman_title, halaman_page_number_str);
                 // Actually do the copy here??
+                // Sort by page to rearrange the split ..
+                // [1:a]   ====>  [1:a]
+                // [1:b]   ====>  [1:b]
+                // [27:c]  ====>  [23:e]
+                // [61:d]  ====>  [27:c]
+                // [23:e]  ====>  [23:e]
             }
 
             return myHalaman;
