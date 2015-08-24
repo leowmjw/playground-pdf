@@ -51,39 +51,67 @@ public class HansardParser {
         PdfReader reader = new PdfReader(HansardParser.SOURCE);
         // Assign it for later reuse ..
         HansardParser.my_reader = reader;
+        // Below gets the Topics associated with each page ..
         Map<Integer, List<String>> myHalamanHash;
         myHalamanHash = HansardParser.getHalaman(reader);
-        // Itertae thoug it .. use example here and here ..
-        HansardParser.splitHalamanbyTopic(myHalamanHash);
+        // Below gets the start page and end page mappings
+        Map<Integer, Integer> myHalamanStartEnd;
+        myHalamanStartEnd = HansardParser.splitHalamanbyTopic(myHalamanHash);
+        // Identify the playas
+        HansardParser.identifySpeakersinTopic(myHalamanStartEnd, myHalamanHash);
 
-        int n;
-        // n = reader.getNumberOfPages();
-        // For test of extraction and regexp; use first 5 pages ..
-        n = 2;
-        for (int i = 2; i < n; i++) {
-            // PdfDictionary pageDict = reader.getPageN(i);
-            // use location based strategy
-            out.println("Page " + i);
-            out.println("===========");
-            String content = PdfTextExtractor.getTextFromPage(reader, i);
-            out.println(content);
-        }
+        // Below copies out the files and split them ..
+        /*
+         try {
+         HansardParser.copyHalamanbyTopic(myHalamanStartEnd, myHalamanHash);
+         } catch (FileNotFoundException ex) {
+         Logger.getLogger(HansardParser.class.getName()).log(Level.SEVERE, null, ex);
+         } catch (DocumentException ex) {
+         Logger.getLogger(HansardParser.class.getName()).log(Level.SEVERE, null, ex);
+         }
+         */
     }
 
-    private void copyHalamanbyTopic(Integer start_page, Integer end_page, String topicName)
+    private static void copyHalamanbyTopic(Map<Integer, Integer> myHalamanStartEnd, Map<Integer, List<String>> myHalamanHash)
             throws FileNotFoundException, DocumentException, IOException {
         // process topicName by replacing space with _?? or leave it as is?
-
-        // Apply the offset ..
-    }
-
-    private static void splitHalamanbyTopic(Map<Integer, List<String>> myHalamanHash) {
         // Iterate through the hash ..
         // Form final filename
         // Copy over the pages ..
         int topicIndex = 0;
         int currentIndex = 0;
-        ArrayList<Integer> Halamans = new ArrayList<>();
+
+        // Apply the offset ..
+    }
+
+    private static void identifySpeakersinTopic(Map<Integer, Integer> myHalamanStartEnd, Map<Integer, List<String>> myHalamanHash) throws IOException {
+        // NOTE: Assumes: first page is index; and there is offset .. does it apply across the spectrum??
+        // Should probably put a safe guard to test actual start/end ...
+        // Look out for the DR pattern and its page number ..
+        // TODO: Above ..
+        for (Integer current_page : myHalamanStartEnd.keySet()) {
+            int start_page = current_page + 1;
+            int end_page = myHalamanStartEnd.get(current_page) + 1;
+            out.println("For current block with title; start page is " + start_page + " and end page is " + end_page);
+            for (int i = start_page; i <= end_page; i++) {
+                // PdfDictionary pageDict = reader.getPageN(i);
+                // use location based strategy
+                out.println("Page " + i);
+                out.println("===========");
+                String content = PdfTextExtractor.getTextFromPage(HansardParser.my_reader, i);
+                // out.println(content);
+                // Identify people ..
+                // ... and what they say??
+                // How to regexp detect paragraph ..
+            }
+            // Rescan needed? no need; just give CMS to tag their speech ..
+            // for demo; break out after first cycle ..
+            break;
+        }
+    }
+
+    private static Map<Integer, Integer> splitHalamanbyTopic(Map<Integer, List<String>> myHalamanHash) {
+        Map<Integer, Integer> Halamans = new TreeMap<>();
         // Halamans[0] = topic, start_page, end_page (1,1)
         // Halamans[1] = topic, start_page, end_page (1,26)
         // Halamans[2] = topic, start_page, end_page (27,60)
@@ -93,15 +121,44 @@ public class HansardParser {
         // Actual End page (Page Number - 1)
         out.println("Sorted Pages and Title");
         out.println("=======================");
+        // Send back ordered HashMap of Start page and mapped End page
+        int current_start_page = 0;
+        int current_end_page = 0;
+        int previous_page = 0;
         // Current index - 1, fill in the end_page based on start_page - 1; if start_page != 1, else fill 1
         for (Integer myStart_Page : myHalamanHash.keySet()) {
-            // Current start will inform the previous end if != 1
-            List<String> myTopicList = myHalamanHash.get(myStart_Page);
-            for (String myTopic : myTopicList) {
-                out.println("Page: " + myStart_Page + " Topic: " + myTopic);
+            current_start_page = myStart_Page;
+            if (previous_page == 0) {
+                // do nothing
+            } else {
+                if (current_start_page == 1) {
+                    // special case: remain as 1
+                    current_end_page = 1;
+                } else {
+                    // it will be start_page - 1
+                    current_end_page = current_start_page - 1;
+                }
+                // Attach to previous page index the value
+                out.println("Calculated block starting at page " + previous_page + " end at page " + current_end_page);
+                Halamans.put(previous_page, current_end_page);
             }
-            
+            // Upddate previous_page_index to the current start_page
+            previous_page = current_start_page;
+            // Below for debugging purposes only ..
+            /*
+             List<String> myTopicList = myHalamanHash.get(myStart_Page);
+             for (String myTopic : myTopicList) {
+             out.println("Page: " + myStart_Page + " Topic: " + myTopic);
+             }
+             */
+
         }
+        // At the end; we need to know that the previous page; the endpage is size of the whole doc - 1
+        current_end_page = HansardParser.my_reader.getNumberOfPages() - 1;
+        out.println("FINALLY: Block starting at page " + previous_page + " end at page " + current_end_page);
+        Halamans.put(previous_page, current_end_page);
+
+        return Halamans;
     }
 
     private static Map<Integer, List<String>> getHalaman(PdfReader myreader) {
@@ -117,7 +174,6 @@ public class HansardParser {
             // Halaman # is $2
             // Extract out and log every matched items ??
             String content = PdfTextExtractor.getTextFromPage(myreader, 1);
-
             // Use TreeMap to have native sort in keys
             Map<Integer, List<String>> myHalaman = null;
             myHalaman = new TreeMap<>();
