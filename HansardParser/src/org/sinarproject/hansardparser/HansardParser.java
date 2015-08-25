@@ -1,24 +1,12 @@
 /*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
+ * Main HansardParser package ..
  */
 package org.sinarproject.hansardparser;
 
-import com.itextpdf.text.DocumentException;
+// Java Standard libs ...
 import java.io.IOException;
 import static java.lang.System.out;
-import java.util.Set;
-import java.util.TreeSet;
-
-import com.itextpdf.text.pdf.PdfDictionary;
-import com.itextpdf.text.pdf.PdfName;
-import com.itextpdf.text.pdf.PdfReader;
-import com.itextpdf.text.pdf.PdfString;
-import com.itextpdf.text.pdf.parser.PdfTextExtractor;
-import java.io.FileNotFoundException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
@@ -26,6 +14,9 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+// iTextPDF libs ..
+import com.itextpdf.text.pdf.PdfReader;
+import com.itextpdf.text.pdf.parser.PdfTextExtractor;
 
 /**
  *
@@ -39,7 +30,9 @@ public class HansardParser {
     public static String SOURCE
             = "example/DR-PARLIMEN/DR-18062015.PDF";
     // PdfReader for multiple uses?
-    private static PdfReader my_reader;
+    // The two items below should NOT be static; danger to race /override conditions likely .. :P
+    static PdfReader my_reader;
+    private static int my_error_count;
 
     /**
      * @param args the command line arguments
@@ -72,18 +65,6 @@ public class HansardParser {
          */
     }
 
-    private static void copyHalamanbyTopic(Map<Integer, Integer> myHalamanStartEnd, Map<Integer, List<String>> myHalamanHash)
-            throws FileNotFoundException, DocumentException, IOException {
-        // process topicName by replacing space with _?? or leave it as is?
-        // Iterate through the hash ..
-        // Form final filename
-        // Copy over the pages ..
-        int topicIndex = 0;
-        int currentIndex = 0;
-
-        // Apply the offset ..
-    }
-
     private static void prepareSpeechBlock(String final_marked_content) {
 
         // replace all newline with space /\n+/g
@@ -104,7 +85,7 @@ public class HansardParser {
             Matcher found_speakers = pattern_mark_speakers.matcher(matched_speech_block);
             Pattern pattern_mark_alt_speakers;
             // Pattern is [ ]+?(.+?\[.+?\])\s+?
-            pattern_mark_alt_speakers = Pattern.compile("([ ]+.+\\[.+\\]\\s+?)minta");
+            pattern_mark_alt_speakers = Pattern.compile("([ ]+.+\\[.+\\]\\s+?)");
             Matcher matched_alt_speakers = pattern_mark_alt_speakers.matcher(matched_speech_block);
 
             out.println("SPEECH_BLOCK");
@@ -119,6 +100,7 @@ public class HansardParser {
             } else {
                 final_speaker = "ERR";
                 final_message = matched_speech_block;
+                HansardParser.my_error_count++;
             }
             out.println("Speaker " + final_speaker + " says ---> " + final_message);
             out.println("=============================");
@@ -148,6 +130,7 @@ public class HansardParser {
             Pattern pattern_mark_speakers;
             pattern_mark_speakers = Pattern.compile("(.+?\\:)");
             Matcher found_speakers = pattern_mark_speakers.matcher(content);
+            // Below for debugging purpose; should be attached to overall instead??
             out.println("SPEAKERS:");
             while (found_speakers.find()) {
                 out.println(found_speakers.group(1));
@@ -187,6 +170,10 @@ public class HansardParser {
         // Look out for the DR pattern and its page number ..
         // TODO: Above ..
         for (Integer current_page : myHalamanStartEnd.keySet()) {
+            // Get the cleaned up topicbypagenumber ..
+            String topicbyPageNumber;
+            topicbyPageNumber = Utils.getTopicbyPageNumber(current_page, myHalamanHash);
+            // Start iterating through all content ..
             int start_page = current_page + 1;
             int end_page = myHalamanStartEnd.get(current_page) + 1;
             out.println("For current block with title; start page is " + start_page + " and end page is " + end_page);
@@ -206,6 +193,8 @@ public class HansardParser {
             // for demo; break out after first cycle ..
             break;
         }
+
+        out.println("Final ERR Count: " + HansardParser.my_error_count);
     }
 
     private static Map<Integer, Integer> splitHalamanbyTopic(Map<Integer, List<String>> myHalamanHash) {
@@ -321,141 +310,4 @@ public class HansardParser {
         return null;
 
     }
-
-    /**
-     *
-     * @param args
-     * @throws IOException
-     */
-    public static void IFail(String[] args) throws IOException {
-        // TODO code application logic here
-        out.println("Sinar Project's Hansard Parser ..");
-        PdfReader reader = new PdfReader(HansardParser.SOURCE);
-        int n;
-        // n = reader.getNumberOfPages();
-        // For test of extraction and regexp; use first 5 pages ..
-        n = 3;
-        for (int i = 1; i < n; i++) {
-            PdfDictionary pageDict = reader.getPageN(i);
-            // use location based strategy
-            out.println("Page " + i);
-            out.println("===========");
-
-            out.println(pageDict.getKeys().toString());
-            // get page
-            PdfDictionary pPage = pageDict.getAsDict(PdfName.PAGE);
-            // PdfDictionary asDict = pPage.getAsDict(PdfName.CONTENT);
-            if (pPage == null) {
-                out.println("Nothing to do here!!");
-            } else {
-                Set<PdfName> keys = pPage.getKeys();
-                for (PdfName key : keys) {
-                    out.println(key);
-                }
-
-            }
-            Set<PdfName> pKeys = pageDict.getKeys();
-            for (PdfName pKey : pKeys) {
-                out.println("KEY is: " + pKey);
-                out.println("=============");
-                PdfDictionary myContentDict = pageDict.getAsDict(pKey);
-                if (myContentDict != null) {
-                    out.println(myContentDict.getKeys());
-
-                } else {
-                    out.println("nothing in this key");
-                }
-                PdfString myContentStr = pageDict.getAsString(pKey);
-                if (myContentStr != null) {
-                    out.println(myContentStr.toString());
-                } else {
-                    out.println("Found no PdfString");
-                }
-            }
-        }
-    }
-
-    /**
-     * @param args the command line arguments
-     */
-    public static void mainFont(String[] args) {
-        // TODO code application logic here
-        out.println("Detecting the fonts in the file ..");
-        // Open source file in example and read out the Format available
-        // looking for bold ..
-        // Example: example/DR-18062015.PDF
-        Set<String> set = null;
-        try {
-            set = new HansardParser().listFonts(HansardParser.SOURCE);
-        } catch (IOException ex) {
-            Logger.getLogger(HansardParser.class.getName()).log(Level.SEVERE, null, ex);
-        }
-        for (String fontname : set) {
-            out.println(fontname);
-        }
-    }
-
-    /**
-     * Creates a Set containing information about the fonts in the src PDF file.
-     *
-     * @param src the path to a PDF file
-     * @return
-     * @throws IOException
-     */
-    public Set<String> listFonts(String src) throws IOException {
-        Set<String> set;
-        set = new TreeSet<>();
-        PdfReader reader = new PdfReader(src);
-        PdfDictionary resources;
-        for (int k = 1; k <= reader.getNumberOfPages(); ++k) {
-            resources = reader.getPageN(k).getAsDict(PdfName.RESOURCES);
-            processResource(set, resources);
-        }
-        reader.close();
-        return set;
-    }
-
-    /**
-     * Extracts the font names from page or XObject resources.
-     *
-     * @param set the set with the font names
-     * @param resource
-     */
-    public static void processResource(Set<String> set, PdfDictionary resource) {
-        if (resource == null) {
-            return;
-        }
-        PdfDictionary xobjects = resource.getAsDict(PdfName.XOBJECT);
-        if (xobjects != null) {
-            for (PdfName key : xobjects.getKeys()) {
-                processResource(set, xobjects.getAsDict(key));
-            }
-        }
-        PdfDictionary fonts = resource.getAsDict(PdfName.FONT);
-        if (fonts == null) {
-            return;
-        }
-        PdfDictionary font;
-        for (PdfName key : fonts.getKeys()) {
-            font = fonts.getAsDict(key);
-            String name = font.getAsName(PdfName.BASEFONT).toString();
-            if (name.length() > 8 && name.charAt(7) == '+') {
-                name = String.format("%s subset (%s)", name.substring(8), name.substring(1, 7));
-            } else {
-                name = name.substring(1);
-                PdfDictionary desc = font.getAsDict(PdfName.FONTDESCRIPTOR);
-                if (desc == null) {
-                    name += " nofontdescriptor";
-                } else if (desc.get(PdfName.FONTFILE) != null) {
-                    name += " (Type 1) embedded";
-                } else if (desc.get(PdfName.FONTFILE2) != null) {
-                    name += " (TrueType) embedded";
-                } else if (desc.get(PdfName.FONTFILE3) != null) {
-                    name += " (" + font.getAsName(PdfName.SUBTYPE).toString().substring(1) + ") embedded";
-                }
-            }
-            set.add(name);
-        }
-    }
-
 }
