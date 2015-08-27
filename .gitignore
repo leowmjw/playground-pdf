@@ -4,7 +4,12 @@
 /results/
 /logs/
 /archive/
-HansardParser/example
+
+/HansardParser/example
+/HansardParser/logs
+/HansardParser/results
+/HansardParser/source
+
 /HansardParser/nbproject/private/
 /HansardParser/build/
 /HansardParser/dist/

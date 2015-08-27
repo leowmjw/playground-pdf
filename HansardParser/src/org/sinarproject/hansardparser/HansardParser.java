@@ -4,6 +4,7 @@
 package org.sinarproject.hansardparser;
 
 // Java Standard libs ...
+import com.itextpdf.text.DocumentException;
 import java.io.IOException;
 import static java.lang.System.out;
 import java.util.ArrayList;
@@ -17,6 +18,7 @@ import java.util.regex.Pattern;
 // iTextPDF libs ..
 import com.itextpdf.text.pdf.PdfReader;
 import com.itextpdf.text.pdf.parser.PdfTextExtractor;
+import java.io.FileNotFoundException;
 
 /**
  *
@@ -28,7 +30,10 @@ public class HansardParser {
      * The resulting PDF file.
      */
     public static String SOURCE
-            = "example/DR-PARLIMEN/DR-18062015.PDF";
+           // = "example/DR-PARLIMEN/DR-18062015.PDF";
+            = "example/DR-PARLIMEN/2015/DR-17062015.PDF";  
+            // = "example/DR-PARLIMEN/2015/DR-18062015.PDF";  
+           // = "example/DR-PARLIMEN/2015/DR-24062013.pdf";
     // PdfReader for multiple uses?
     // The two items below should NOT be static; danger to race /override conditions likely .. :P
     static PdfReader my_reader;
@@ -50,19 +55,15 @@ public class HansardParser {
         // Below gets the start page and end page mappings
         Map<Integer, Integer> myHalamanStartEnd;
         myHalamanStartEnd = HansardParser.splitHalamanbyTopic(myHalamanHash);
-        // Identify the playas
-        HansardParser.identifySpeakersinTopic(myHalamanStartEnd, myHalamanHash);
-
-        // Below copies out the files and split them ..
-        /*
-         try {
-         HansardParser.copyHalamanbyTopic(myHalamanStartEnd, myHalamanHash);
-         } catch (FileNotFoundException ex) {
-         Logger.getLogger(HansardParser.class.getName()).log(Level.SEVERE, null, ex);
-         } catch (DocumentException ex) {
-         Logger.getLogger(HansardParser.class.getName()).log(Level.SEVERE, null, ex);
-         }
-         */
+        try {
+            // Below copies out the files and split them ..
+            HansardCopy.copyHalamanbyTopic(myHalamanStartEnd, myHalamanHash);
+        } catch (FileNotFoundException | DocumentException ex) {
+            Logger.getLogger(HansardParser.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        // OPTIONAL: Identify the playas
+        // HansardParser.identifySpeakersinTopic(myHalamanStartEnd, myHalamanHash);
+         
     }
 
     private static void prepareSpeechBlock(String final_marked_content) {
@@ -88,7 +89,7 @@ public class HansardParser {
             pattern_mark_alt_speakers = Pattern.compile("([ ]+.+\\[.+\\]\\s+?)");
             Matcher matched_alt_speakers = pattern_mark_alt_speakers.matcher(matched_speech_block);
 
-            out.println("SPEECH_BLOCK");
+            // Below for SPEECH_BLOCK
             String final_message = "";
             String final_speaker = "";
             if (found_speakers.find()) {
@@ -102,8 +103,12 @@ public class HansardParser {
                 final_message = matched_speech_block;
                 HansardParser.my_error_count++;
             }
+            // DEBUG: Below for debugging purposes ..
+            /*
+            out.println("SPEECH_BLOCK");
             out.println("Speaker " + final_speaker + " says ---> " + final_message);
             out.println("=============================");
+            */
             // Split out speaker from what was said; look for the : pattern
             // Maybe even detect time marker??
             // Special case; from previous page; append the previous guy ..
@@ -231,7 +236,7 @@ public class HansardParser {
             }
             // Upddate previous_page_index to the current start_page
             previous_page = current_start_page;
-            // Below for debugging purposes only ..
+            // DEBUG: Below for debugging purposes only ..
             /*
              List<String> myTopicList = myHalamanHash.get(myStart_Page);
              for (String myTopic : myTopicList) {
