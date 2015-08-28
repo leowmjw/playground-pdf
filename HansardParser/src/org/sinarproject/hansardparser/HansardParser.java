@@ -43,10 +43,15 @@ public class HansardParser {
      * @param args the command line arguments
      * @throws java.io.IOException
      */
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) {
         // TODO code application logic here
         out.println("Sinar Project's Hansard Parser ..");
-        PdfReader reader = new PdfReader(HansardParser.SOURCE);
+        PdfReader reader = null;
+        try {
+            reader = new PdfReader(HansardParser.SOURCE);
+        } catch (IOException ex) {
+            Logger.getLogger(HansardParser.class.getName()).log(Level.SEVERE, null, ex);
+        }
         // Assign it for later reuse ..
         HansardParser.my_reader = reader;
         // Below gets the Topics associated with each page ..
@@ -60,9 +65,19 @@ public class HansardParser {
             HansardCopy.copyHalamanbyTopic(myHalamanStartEnd, myHalamanHash);
         } catch (FileNotFoundException | DocumentException ex) {
             Logger.getLogger(HansardParser.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (IOException ex) {
+            Logger.getLogger(HansardParser.class.getName()).log(Level.SEVERE, null, ex);
         }
-        // OPTIONAL: Identify the playas
-        // HansardParser.identifySpeakersinTopic(myHalamanStartEnd, myHalamanHash);
+        try {
+            // Copy the front page (index) for further use as needed
+            HansardCopy.copyHalamanFrontPage();
+            // OPTIONAL: Identify the playas
+            // HansardParser.identifySpeakersinTopic(myHalamanStartEnd, myHalamanHash);
+        } catch (DocumentException ex) {
+            Logger.getLogger(HansardParser.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (IOException ex) {
+            Logger.getLogger(HansardParser.class.getName()).log(Level.SEVERE, null, ex);
+        }
          
     }
 
@@ -227,6 +242,7 @@ public class HansardParser {
                     // special case: remain as 1
                     current_end_page = 1;
                 } else {
+                    // check if the current_start_page has partial content from previous topic; if yes ..
                     // it will be start_page - 1
                     current_end_page = current_start_page - 1;
                 }

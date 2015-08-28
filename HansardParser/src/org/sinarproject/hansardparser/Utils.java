@@ -75,6 +75,13 @@ public class Utils {
         // clean first to standard to make sure we can put in the right index ..
 
     }
+    
+    public static boolean hasContentfromPreviousTopic(String current_topic_title) {
+        // Ignore the DR pattern; and see after that ..
+        // Flatten content; before trying a match ..
+        // by default assumes NO content from Previous Topic ..
+        return false;
+    }
 
     // pattern matching of speaker
     // apttern matching of alt speaker 
