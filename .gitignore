@@ -10,10 +10,6 @@
 /HansardParser/results
 /HansardParser/source
 
-/HansardParser/nbproject/private/
-/HansardParser/build/
-/HansardParser/dist/
-
 # Java class
 *.class
 
@@ -29,4 +25,8 @@
 /dist/
 /build/
 /HansardParser/nbproject/private/
+/HansardParser/dist/
 /HansardParser/build/
+/ECRedelineation/nbproject/private/
+/ECRedelineation/dist/
+/ECRedelineation/build/
