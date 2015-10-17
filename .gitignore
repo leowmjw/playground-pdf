@@ -10,6 +10,11 @@
 /HansardParser/results
 /HansardParser/source
 
+/ECRedelineation/example
+/ECRedelineation/logs
+/ECRedelineation/results
+/ECRedelineation/source
+
 # Java class
 *.class
 

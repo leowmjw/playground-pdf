@@ -28,7 +28,8 @@ public class Utils {
     private static final Pattern PAR_regexp_pattern = Pattern.compile(PAR_regexp);
     private static final String DUN_regexp = "N\\s*?\\.\\s*?(\\d+).*?([\\w’'\\s]+?)\\s*?(\\d+\\..*)";
     private static final Pattern DUN_regexp_pattern = Pattern.compile(DUN_regexp);
-    private static final String DUN_regexp_loose = "N\\.";
+    private static final String DUN_regexp_loose = "N\\..*?(\\d+).*";
+    private static final Pattern DUN_regexp_loose_pattern = Pattern.compile(DUN_regexp_loose);
     private static final String DM_regexp = "(\\d+?)\\s*?\\.\\s*?([\\w’'\\s]+?)\\s*?(\\d[,\\d]+).*?";
     private static final Pattern DM_regexp_pattern = Pattern.compile(DM_regexp);
     private static final String DM_regexp_loose = "";
@@ -69,14 +70,33 @@ public class Utils {
     }
 
     public static boolean isStartOfDUN(String single_line_of_content) {
+        // Init the Matchers
         Matcher DUN_regexp_pattern_matched = DUN_regexp_pattern.matcher(single_line_of_content);
+        Matcher DUN_regexp_loose_pattern_matched = DUN_regexp_loose_pattern.matcher(single_line_of_content);
+
+        // Matching rules below
         if (DUN_regexp_pattern_matched.find()) {
-            out.println("CODE:" + DUN_regexp_pattern_matched.group(1)
-                    + " NAME:" + DUN_regexp_pattern_matched.group(2)
-                    + " LEFTOVER:" + DUN_regexp_pattern_matched.group(3));
+            // DEBUG:
+            /*
+             out.println("CODE:" + DUN_regexp_pattern_matched.group(1)
+             + " NAME:" + DUN_regexp_pattern_matched.group(2)
+             + " LEFTOVER:" + DUN_regexp_pattern_matched.group(3));
+             */
 
             extractDataOfDM(DUN_regexp_pattern_matched.group(3));
             return true;
+        } else if (DUN_regexp_loose_pattern_matched.find()) {
+            // Abnormalities; note it down for future correction
+            out.println("ERROR: Needed a loose match for CODE: " + DUN_regexp_loose_pattern_matched.group(1));
+            out.println("PROB_LINE:" + single_line_of_content);
+            // Leave in Map for further analysis
+            ECRedelineation.error_while_parsing.put(
+                    "N" + DUN_regexp_loose_pattern_matched.group(1), 
+                    DUN_regexp_loose_pattern_matched.group(3));
+            // If leftover  is number; add as population; can assume 01 as DM code 
+            //      leave name as UNKNOWN
+            // else if words; then can assume 01 as DM code
+            //      leave population as 0
         }
         // Need for a more flexible match as well ..
         // Extract out DUN Code and also first line of DM for downstream processing

@@ -13,6 +13,7 @@ import com.itextpdf.text.pdf.parser.TextExtractionStrategy;
 import java.io.IOException;
 import static java.lang.System.out;
 import java.util.Map;
+import java.util.TreeMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import static org.boon.Maps.map;
@@ -30,6 +31,8 @@ public class ECRedelineation {
     static int currentScheduleBlock = 0;
     static String currentPARLabel;
     static String currentDUNLabel;
+    static Map<String, String> final_mapped_data;
+    static Map<String, String> error_while_parsing;
 
     /**
      * @param args the command line arguments
@@ -43,16 +46,37 @@ public class ECRedelineation {
             int n;
             n = reader.getNumberOfPages();
             int i;
+            // Maps init .. Key is <PAR_CODE>/<DUN_CODE>/<DM_CODE>
+            // <Key> -> Name:Population
+            // Errors -> Map<ErrKey, Original String>; ErrKey is Nxx
+            final_mapped_data = new TreeMap<>();
+            error_while_parsing = new TreeMap<>();
+            // Loop through each page ..
             for (i = 1; i < n; i++) {
                 try {
                     String content;
-                    
                     content = PdfTextExtractor.getTextFromPage(reader, i, new LocationTextExtractionStrategy());
                     describePage(content, i);
                 } catch (IOException ex) {
                     Logger.getLogger(ECRedelineation.class.getName()).log(Level.SEVERE, null, ex);
                 }
             }
+            // Dump out error hash .. if any
+            if (error_while_parsing.size() > 0) {
+                out.println("========================");
+                out.println("    PARSING ERRORS     ");
+                out.println("========================");
+                for (Map.Entry<String, String> single_report_entry : error_while_parsing.entrySet()) {
+                    out.println("CODE: " + single_report_entry.getKey());
+                    out.println("UNMATCHED: " + single_report_entry.getValue());
+                }
+            } else {
+                out.println("========================");
+                out.println("      ALL OK!!!         ");
+                out.println("========================");
+                
+            }
+            out.println("xxxxxxxXXXXXXXXXXxxxxxxxxx");
         } catch (IOException ex) {
             Logger.getLogger(ECRedelineation.class.getName()).log(Level.SEVERE, null, ex);
         }
@@ -91,8 +115,8 @@ public class ECRedelineation {
                 // match ..
                 String[] lines_of_content = raw_extracted_content.split("\\r?\\n");
                 for (String single_line_of_content : lines_of_content) {
-                    // DEBUG:
-                    out.println("LINE:" + single_line_of_content);
+                    // DEBUG: For a look at the raw line to be process ..
+                    // out.println("LINE:" + single_line_of_content);
                     if (Utils.isStartOfPAR(single_line_of_content)) {
                         // Anything to do with PAR??
                         out.println(single_line_of_content);
