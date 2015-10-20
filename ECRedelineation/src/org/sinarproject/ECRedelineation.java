@@ -6,18 +6,14 @@
 package org.sinarproject;
 
 import com.itextpdf.text.pdf.PdfReader;
-import com.itextpdf.text.pdf.parser.GlyphTextRenderListener;
 import com.itextpdf.text.pdf.parser.LocationTextExtractionStrategy;
 import com.itextpdf.text.pdf.parser.PdfTextExtractor;
-import com.itextpdf.text.pdf.parser.TextExtractionStrategy;
 import java.io.IOException;
 import static java.lang.System.out;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import static org.boon.Maps.map;
-import org.boon.primitive.Int;
 
 /**
  *
@@ -31,6 +27,8 @@ public class ECRedelineation {
     static int currentScheduleBlock = 0;
     static String currentPARLabel;
     static String currentDUNLabel;
+    static String currentDMLabel;
+    static int countedDM;
     static Map<String, String> final_mapped_data;
     static Map<String, String> error_while_parsing;
 
@@ -55,7 +53,10 @@ public class ECRedelineation {
             for (i = 1; i < n; i++) {
                 try {
                     String content;
-                    content = PdfTextExtractor.getTextFromPage(reader, i, new LocationTextExtractionStrategy());
+                    content = PdfTextExtractor.getTextFromPage(reader, i,
+                            new LocationTextExtractionStrategy()
+                    );
+                    // content = PdfTextExtractor.getTextFromPage(reader, i);
                     describePage(content, i);
                 } catch (IOException ex) {
                     Logger.getLogger(ECRedelineation.class.getName()).log(Level.SEVERE, null, ex);
@@ -74,7 +75,14 @@ public class ECRedelineation {
                 out.println("========================");
                 out.println("      ALL OK!!!         ");
                 out.println("========================");
-                
+            }
+            out.println("========================");
+            out.println("  @@@@ Data!!! @@@@     ");
+            out.println("========================");
+            out.println("Final DM count: " + countedDM);
+            for (Map.Entry<String, String> single_data_entry : final_mapped_data.entrySet()) {
+                out.print("KEY:" + single_data_entry.getKey());
+                out.println(" ==> " + single_data_entry.getValue());
             }
             out.println("xxxxxxxXXXXXXXXXXxxxxxxxxx");
         } catch (IOException ex) {
@@ -119,14 +127,27 @@ public class ECRedelineation {
                     // out.println("LINE:" + single_line_of_content);
                     if (Utils.isStartOfPAR(single_line_of_content)) {
                         // Anything to do with PAR??
-                        out.println(single_line_of_content);
-                        out.println("========^^^ MATCHED PAR ^^^^=======");
+                        // DEBUG: 
+                        /*
+                         out.println(single_line_of_content);
+                         out.println("========^^^ MATCHED PAR ^^^^=======");
+                         */
                     } else if (Utils.isStartOfDUN(single_line_of_content)) {
                         // ANything to do DUN
-                        out.println(single_line_of_content);
-                        out.println("========^^^ MATCHED DUN ^^^^=======");
+                        // DEBUG:
+                        /*
+                         out.println(single_line_of_content);
+                         out.println("========^^^ MATCHED DUN ^^^^=======");
+                         */
                     } else if (Utils.containsDMData(single_line_of_content)) {
                         // Extract DM
+                        Utils.mapDMData(single_line_of_content);
+                        countedDM++;
+                        // DEBUG:
+                        /*
+                         out.println(single_line_of_content);
+                         out.println("========^^^ MATCHED DM ^^^^=======");
+                         */
                     } else {
                         // Nothing to do ..
                     };
