@@ -24,17 +24,18 @@ public class Utils {
     private static final Pattern second_schedule_pattern = Pattern.compile(second_schedule);
     private static final String third_schedule = "JADUAL KETIGA";
     private static final Pattern third_schedule_pattern = Pattern.compile(third_schedule);
-    private static final String PAR_regexp = "PERSEKUTUAN.*?P.*?(\\d+).*?([\\w\\s]+).*?";
+    private static final String PAR_regexp = "PERSEKUTUAN.*?P.*?(\\d+).*?([-\\w\\s]+).*?";
     private static final Pattern PAR_regexp_pattern = Pattern.compile(PAR_regexp);
-    private static final String DUN_regexp = "N\\s*?\\.\\s*?(\\d+).*?([\\w’'\\s]+?)\\s*?(\\d+\\..*)";
+    private static final String DUN_regexp = "N\\s*?\\.\\s*?(\\d+).*?([-\\w’'\\s]+?)\\s*?(\\d+\\..*)";
     private static final Pattern DUN_regexp_pattern = Pattern.compile(DUN_regexp);
     private static final String DUN_regexp_loose = "N\\.\\s*?(\\d+{1,2})(.*)";
     private static final Pattern DUN_regexp_loose_pattern = Pattern.compile(DUN_regexp_loose);
-    private static final String DM_regexp = "(\\d+?)\\s*?\\.\\s*?([\\w’'\\s]+?)\\s*?(\\d[,\\d]+).*?";
+    private static final String DM_regexp = "(\\d+?)\\s*?\\.\\s*?([-\\w’'\\s]+?)\\s*?(\\d[,\\d]+).*?";
     private static final Pattern DM_regexp_pattern = Pattern.compile(DM_regexp);
     private static final String DM_regexp_loose = "(\\d+?)\\s*?\\.\\s*?(.*)";
     private static final Pattern DM_regexp_loose_pattern = Pattern.compile(DM_regexp_loose);
-    private static final String population_total_regexp = "\\s+\\d+";
+    private static final String leftover_DMpopulation_regexp = "^\\s+(\\d[,\\d]+).*$";
+    private static final Pattern leftover_DMpopulation_pattern = Pattern.compile(leftover_DMpopulation_regexp);
 
     public static boolean isStartOfSchedule(String raw_content) {
 
@@ -130,6 +131,7 @@ public class Utils {
             ECRedelineation.final_mapped_data.put(full_dm_key, leftover_name.trim() + ":"
                     + split_name_population[split_name_population.length - 1].replaceAll(",", ""));
             // Put into error map; for future debugging
+            ECRedelineation.DUNerrors++;
             ECRedelineation.error_while_parsing.put(
                     "N" + DUN_regexp_loose_pattern_matched.group(1),
                     DUN_regexp_loose_pattern_matched.group(2));
@@ -145,6 +147,34 @@ public class Utils {
         // Update the current DUN Code label
         return false;
 
+    }
+
+    public static boolean containsPossibleDMPopulation(String single_line_of_content) {
+        Matcher leftover_DMpopulation_pattern_matched = leftover_DMpopulation_pattern.matcher(single_line_of_content);
+        if (leftover_DMpopulation_pattern_matched.find()) {
+            String population = leftover_DMpopulation_pattern_matched.group(1).replaceAll(",", "");
+            if ("".equals(ECRedelineation.currentDMErrorLabel)) {
+                // DO othing as no error encountered yet!
+                out.println("Nothing to do .. LINE: " + single_line_of_content);
+            } else {
+                out.println("Found population for "
+                        + ECRedelineation.currentDMErrorLabel
+                        + " ==> " + population);
+                out.println("LINE: " + single_line_of_content);
+                // Correct the current map
+                ECRedelineation.final_mapped_data.put(
+                        ECRedelineation.currentDMErrorLabel,
+                        ECRedelineation.final_mapped_data.get(
+                                ECRedelineation.currentDMErrorLabel
+                        ) + population
+                );
+                // Clear off the error by resetting to ""
+                ECRedelineation.currentDMErrorLabel = "";
+                ECRedelineation.fixedDMs++;
+            }
+            return true;
+        };
+        return false;
     }
 
     public static boolean containsDMData(String single_line_of_content) {
@@ -164,10 +194,15 @@ public class Utils {
              out.println("PROB_LINE:" + single_line_of_content);
              */
             // Note down the anomalies for action later on ..
-            ECRedelineation.error_while_parsing.put(
-                    ECRedelineation.currentPARLabel + "/"
+            ECRedelineation.DMerrors++;
+            String dm_error_label = ECRedelineation.currentPARLabel + "/"
                     + ECRedelineation.currentDUNLabel + "/"
-                    + DM_regexp_loose_pattern_matched.group(1),
+                    + normalizeCode(
+                            DM_regexp_loose_pattern_matched.group(1)
+                    );
+            ECRedelineation.currentDMErrorLabel = dm_error_label;
+            ECRedelineation.error_while_parsing.put(
+                    dm_error_label,
                     single_line_of_content
             );
             return true;

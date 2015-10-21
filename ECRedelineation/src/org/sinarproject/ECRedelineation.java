@@ -28,7 +28,11 @@ public class ECRedelineation {
     static String currentPARLabel;
     static String currentDUNLabel;
     static String currentDMLabel;
-    static int countedDM;
+    static String currentDMErrorLabel = "";
+    static int countedDM = 0;
+    static int DUNerrors = 0;
+    static int DMerrors = 0;
+    static int fixedDMs = 0;
     static Map<String, String> final_mapped_data;
     static Map<String, String> error_while_parsing;
 
@@ -64,26 +68,34 @@ public class ECRedelineation {
             }
             // Dump out error hash .. if any
             if (error_while_parsing.size() > 0) {
-                out.println("========================");
-                out.println("    PARSING ERRORS     ");
-                out.println("========================");
-                for (Map.Entry<String, String> single_report_entry : error_while_parsing.entrySet()) {
-                    out.println("CODE: " + single_report_entry.getKey());
-                    out.println("UNMATCHED: " + single_report_entry.getValue());
-                }
+                out.println("==============================");
+                out.println(" PARSING ERRORS --> "
+                        + error_while_parsing.size() + " errors!!!");
+                out.println("DUN: " + DUNerrors
+                        + " DM: " + DMerrors
+                        + " Fixed:" + fixedDMs);
+                out.println("==============================");
+                /*
+                 for (Map.Entry<String, String> single_report_entry : error_while_parsing.entrySet()) {
+                 out.println("CODE: " + single_report_entry.getKey());
+                 out.println("UNMATCHED: " + single_report_entry.getValue());
+                 }
+                 */
             } else {
                 out.println("========================");
                 out.println("      ALL OK!!!         ");
                 out.println("========================");
             }
-            out.println("========================");
-            out.println("  @@@@ Data!!! @@@@     ");
-            out.println("========================");
-            out.println("Final DM count: " + countedDM);
-            for (Map.Entry<String, String> single_data_entry : final_mapped_data.entrySet()) {
-                out.print("KEY:" + single_data_entry.getKey());
-                out.println(" ==> " + single_data_entry.getValue());
-            }
+            
+             out.println("========================");
+             out.println("  @@@@ Data!!! @@@@     ");
+             out.println("========================");
+             out.println("Final DM count: " + countedDM);
+             for (Map.Entry<String, String> single_data_entry : final_mapped_data.entrySet()) {
+             out.print("KEY:" + single_data_entry.getKey());
+             out.println(" ==> " + single_data_entry.getValue());
+             }
+             
             out.println("xxxxxxxXXXXXXXXXXxxxxxxxxx");
         } catch (IOException ex) {
             Logger.getLogger(ECRedelineation.class.getName()).log(Level.SEVERE, null, ex);
@@ -148,6 +160,9 @@ public class ECRedelineation {
                          out.println(single_line_of_content);
                          out.println("========^^^ MATCHED DM ^^^^=======");
                          */
+                    } else if (Utils.containsPossibleDMPopulation(single_line_of_content)) {
+                        // Stuff done inside function already
+                        // out.println("Found population!");
                     } else {
                         // Nothing to do ..
                     };
