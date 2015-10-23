@@ -29,6 +29,7 @@ public class ECRedelineation {
     static String currentDUNLabel;
     static String currentDMLabel;
     static String currentDMErrorLabel = "";
+    static String currentDMMisaligned = "";
     static int countedDM = 0;
     static int DUNerrors = 0;
     static int DMerrors = 0;
@@ -75,6 +76,7 @@ public class ECRedelineation {
                         + " DM: " + DMerrors
                         + " Fixed:" + fixedDMs);
                 out.println("==============================");
+                // TODO: Shift to file output
                 /*
                  for (Map.Entry<String, String> single_report_entry : error_while_parsing.entrySet()) {
                  out.println("CODE: " + single_report_entry.getKey());
@@ -86,16 +88,21 @@ public class ECRedelineation {
                 out.println("      ALL OK!!!         ");
                 out.println("========================");
             }
-            
-             out.println("========================");
-             out.println("  @@@@ Data!!! @@@@     ");
-             out.println("========================");
-             out.println("Final DM count: " + countedDM);
-             for (Map.Entry<String, String> single_data_entry : final_mapped_data.entrySet()) {
-             out.print("KEY:" + single_data_entry.getKey());
-             out.println(" ==> " + single_data_entry.getValue());
-             }
-             
+
+            out.println("========================");
+            out.println("  @@@@ Data!!! @@@@     ");
+            out.println("========================");
+            out.println("Final DM count: " + countedDM);
+            // Detect if there any population not being able to be detected; so action can be taken
+            for (Map.Entry<String, String> single_data_entry : final_mapped_data.entrySet()) {
+                // Output those that were not able to be auto-corrected ..
+                if (single_data_entry.getValue().endsWith(":0")) {
+                    out.print("KEY:" + single_data_entry.getKey());
+                    out.println(" ==> " + single_data_entry.getValue());
+                };
+            }
+            // write down Output
+            Utils.writeJSONMappedData();
             out.println("xxxxxxxXXXXXXXXXXxxxxxxxxx");
         } catch (IOException ex) {
             Logger.getLogger(ECRedelineation.class.getName()).log(Level.SEVERE, null, ex);
@@ -151,6 +158,10 @@ public class ECRedelineation {
                          out.println(single_line_of_content);
                          out.println("========^^^ MATCHED DUN ^^^^=======");
                          */
+                    } else if (Utils.containsPossibleMisalignedDM(single_line_of_content)) {
+                        // ORDER matters; needs to be called before containsDMData as this
+                        //  is a specific rule ..
+                        // DO NOT count DM as it will be counted inside DUN starter
                     } else if (Utils.containsDMData(single_line_of_content)) {
                         // Extract DM
                         Utils.mapDMData(single_line_of_content);

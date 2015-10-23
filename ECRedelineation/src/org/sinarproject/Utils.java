@@ -6,8 +6,10 @@
 package org.sinarproject;
 
 import static java.lang.System.out;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import static org.sinarproject.ECRedelineation.final_mapped_data;
 
 /**
  *
@@ -36,6 +38,8 @@ public class Utils {
     private static final Pattern DM_regexp_loose_pattern = Pattern.compile(DM_regexp_loose);
     private static final String leftover_DMpopulation_regexp = "^\\s+(\\d[,\\d]+).*$";
     private static final Pattern leftover_DMpopulation_pattern = Pattern.compile(leftover_DMpopulation_regexp);
+    private static final String misaligned_DM_regexp = "^\\s*?1\\.\\s+?([-\\w’'\\s]+)(.*)$";
+    private static final Pattern misaligned_DM_regexp_pattern = Pattern.compile(misaligned_DM_regexp);
 
     public static boolean isStartOfSchedule(String raw_content) {
 
@@ -99,47 +103,84 @@ public class Utils {
             ECRedelineation.final_mapped_data.put(full_dm_key, full_dm_value);
             return true;
         } else if (DUN_regexp_loose_pattern_matched.find()) {
+
             ECRedelineation.currentDUNLabel = normalizeCode(
                     DUN_regexp_loose_pattern_matched.group(1)
             );
-            // Abnormalities; note it down for future correction
-            // DEBUG:
-            /*
-             out.println("ERROR: Needed a loose match for CODE: " + DUN_regexp_loose_pattern_matched.group(1));
-             out.println("PROB_LINE:" + single_line_of_content);
-             */
-            // Leave in Map for further analysis
-            // Burst and split by space (assume it is population if number is > 100
-            // Pop out for number
-            String[] split_name_population = DUN_regexp_loose_pattern_matched.group(2).split("\\s");
-            String leftover_name = "";
-            for (int i = 0; i < (split_name_population.length - 1); i++) {
-                leftover_name += " " + split_name_population[i];
-            }
-            // DEBUG:
-            /*
-             out.println("Final NAME:POP => " + leftover_name + ":"
-             + split_name_population[split_name_population.length - 1]);
-             */
             // Since we assume no match of DM code; drop to default
             ECRedelineation.currentDMLabel = "01";
             // TODO: Alternative; detect if possible A below
             // <dm_code>. <name> ==> possible A??
             // <name> <population> ==> default assumption
-            // Put into key map
-            String full_dm_key = formFinalDMKey();
-            ECRedelineation.final_mapped_data.put(full_dm_key, leftover_name.trim() + ":"
-                    + split_name_population[split_name_population.length - 1].replaceAll(",", ""));
-            // Put into error map; for future debugging
+            // **** NOTE above applies for BOTH scenarios
+            // SCENARIO #1: MISALIGNMENT
+            // Assume leftover looks like: 
+            // LINE:1. Nabor 
+            // LINE:N. 76 Marudi 1,902
+            if (!"".equals(ECRedelineation.currentDMMisaligned)) {
+                // Custom processing
+                String[] split_name_population = DUN_regexp_loose_pattern_matched.group(2).split("\\s");
+                String leftover_name = "";
+                for (int i = 0; i < (split_name_population.length - 1); i++) {
+                    leftover_name += " " + split_name_population[i];
+                }
+                // In this scenario: leftover_name is DUN Name!! <=== TODO!!!
+                // DEBUG:
+                /*
+                out.println("DUN_CODE " + ECRedelineation.currentDUNLabel
+                        + " ==> " + leftover_name);
+                */
+                // DEBUG:
+                /*
+                 out.println("Final NAME:POP => " + leftover_name + ":"
+                 + split_name_population[split_name_population.length - 1]);
+                 */
+                // Put into key map; to be refactored; looks same :P
+                String full_dm_key = formFinalDMKey();
+                ECRedelineation.final_mapped_data.put(full_dm_key,
+                        ECRedelineation.currentDMMisaligned.trim() + ":"
+                        + split_name_population[split_name_population.length - 1].replaceAll(",", "")
+                );
+                // Resets misalignment 
+                ECRedelineation.currentDMMisaligned = "";
+            } else {
+                // SHould not come here??
+                out.println("****** SCENARIO #2 SHOULD NOT HAPPEN!!! ******");
+                // Abnormalities; note it down for future correction
+                // DEBUG:
+                /*
+                 out.println("ERROR: Needed a loose match for CODE: " + DUN_regexp_loose_pattern_matched.group(1));
+                 out.println("PROB_LINE:" + single_line_of_content);
+                 */
+                // Leave in Map for further analysis
+                // Burst and split by space (assume it is population if number is > 100
+                // Pop out for number
+                String[] split_name_population = DUN_regexp_loose_pattern_matched.group(2).split("\\s");
+                String leftover_name = "";
+                for (int i = 0; i < (split_name_population.length - 1); i++) {
+                    leftover_name += " " + split_name_population[i];
+                }
+                // DEBUG:
+                /*
+                 out.println("Final NAME:POP => " + leftover_name + ":"
+                 + split_name_population[split_name_population.length - 1]);
+                 */
+                // Put into key map
+                String full_dm_key = formFinalDMKey();
+                ECRedelineation.final_mapped_data.put(full_dm_key,
+                        leftover_name.trim() + ":"
+                        + split_name_population[split_name_population.length - 1].replaceAll(",", "")
+                );
+            }
+            // Put into error map; for future debugging; applies to BOTH scenarios
             ECRedelineation.DUNerrors++;
             ECRedelineation.error_while_parsing.put(
                     "N" + DUN_regexp_loose_pattern_matched.group(1),
-                    DUN_regexp_loose_pattern_matched.group(2));
-            // Leave rest as Name
-            // If leftover  is number; add as population; can assume 01 as DM code 
-            //      leave name as UNKNOWN
-            // else if words; then can assume 01 as DM code
-            //      leave population as 0
+                    DUN_regexp_loose_pattern_matched.group(2)
+            );
+            // Don;t forget to count the DM!! Applies to BOTH scenarios above!
+            ECRedelineation.countedDM++;
+
             return true;
         }
         // Need for a more flexible match as well ..
@@ -149,18 +190,38 @@ public class Utils {
 
     }
 
+    public static boolean containsPossibleMisalignedDM(String single_line_of_content) {
+        Matcher misaligned_DM_regexp_pattern_matched = misaligned_DM_regexp_pattern.matcher(single_line_of_content);
+        if (misaligned_DM_regexp_pattern_matched.find()) {
+            // DEBUG: ..
+            /*
+            out.println("Found possible misaligned DM: "
+                    + misaligned_DM_regexp_pattern_matched.group(1)
+                    + " POP? " + misaligned_DM_regexp_pattern_matched.group(2)
+            );
+            */
+            ECRedelineation.currentDMMisaligned = misaligned_DM_regexp_pattern_matched.group(1);
+            return true;
+        }
+        // No match; return false
+        return false;
+    }
+
     public static boolean containsPossibleDMPopulation(String single_line_of_content) {
         Matcher leftover_DMpopulation_pattern_matched = leftover_DMpopulation_pattern.matcher(single_line_of_content);
         if (leftover_DMpopulation_pattern_matched.find()) {
             String population = leftover_DMpopulation_pattern_matched.group(1).replaceAll(",", "");
             if ("".equals(ECRedelineation.currentDMErrorLabel)) {
                 // DO othing as no error encountered yet!
-                out.println("Nothing to do .. LINE: " + single_line_of_content);
+                // out.println("POssible Total Population LINE: " + single_line_of_content);
             } else {
-                out.println("Found population for "
-                        + ECRedelineation.currentDMErrorLabel
-                        + " ==> " + population);
-                out.println("LINE: " + single_line_of_content);
+                // DEBUG: Show correction and their assignment
+                /*
+                 out.println("Found population for "
+                 + ECRedelineation.currentDMErrorLabel
+                 + " ==> " + population);
+                 out.println("LINE: " + single_line_of_content);
+                 */
                 // Correct the current map
                 ECRedelineation.final_mapped_data.put(
                         ECRedelineation.currentDMErrorLabel,
@@ -246,6 +307,10 @@ public class Utils {
 
     public static void writeJSONMappedData() {
         // Write out the data what can be easily transformed via JSONlines??
+        for (Map.Entry<String, String> single_data_entry : final_mapped_data.entrySet()) {
+            out.print("KEY:" + single_data_entry.getKey());
+            out.println(" ==> " + single_data_entry.getValue());
+        }
     }
 
     private static String normalizeCode(String raw_code_number) {
