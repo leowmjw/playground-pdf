@@ -6,9 +6,14 @@
 package org.sinarproject;
 
 import static java.lang.System.out;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.boon.Boon;
+import static org.boon.Lists.list;
+import static org.boon.Maps.map;
 import static org.sinarproject.ECRedelineation.final_mapped_data;
 
 /**
@@ -65,8 +70,11 @@ public class Utils {
     public static boolean isStartOfPAR(String single_line_of_content) {
         Matcher PAR_regexp_pattern_matched = PAR_regexp_pattern.matcher(single_line_of_content);
         if (PAR_regexp_pattern_matched.find()) {
-            ECRedelineation.currentPARLabel = normalizeCode(
+            ECRedelineation.currentPARCode = normalizeCode(
                     PAR_regexp_pattern_matched.group(1)
+            );
+            ECRedelineation.currentPARName = normalizeName(
+                    PAR_regexp_pattern_matched.group(2)
             );
             // DEBUG:
             /*
@@ -88,8 +96,11 @@ public class Utils {
 
         // Matching rules below
         if (DUN_regexp_pattern_matched.find()) {
-            ECRedelineation.currentDUNLabel = normalizeCode(
+            ECRedelineation.currentDUNCode = normalizeCode(
                     DUN_regexp_pattern_matched.group(1)
+            );
+            ECRedelineation.currentDUNName = normalizeName(
+                    DUN_regexp_pattern_matched.group(2)
             );
             // DEBUG:
             /*
@@ -100,15 +111,19 @@ public class Utils {
 
             String full_dm_value = extractDataOfDM(DUN_regexp_pattern_matched.group(3));
             String full_dm_key = formFinalDMKey();
-            ECRedelineation.final_mapped_data.put(full_dm_key, full_dm_value);
+            ECRedelineation.final_mapped_data.put(
+                    full_dm_key,
+                    formFinalCSVPrefix() + ","
+                    + full_dm_value
+            );
             return true;
         } else if (DUN_regexp_loose_pattern_matched.find()) {
 
-            ECRedelineation.currentDUNLabel = normalizeCode(
+            ECRedelineation.currentDUNCode = normalizeCode(
                     DUN_regexp_loose_pattern_matched.group(1)
             );
             // Since we assume no match of DM code; drop to default
-            ECRedelineation.currentDMLabel = "01";
+            ECRedelineation.currentDMCode = "01";
             // TODO: Alternative; detect if possible A below
             // <dm_code>. <name> ==> possible A??
             // <name> <population> ==> default assumption
@@ -124,12 +139,13 @@ public class Utils {
                 for (int i = 0; i < (split_name_population.length - 1); i++) {
                     leftover_name += " " + split_name_population[i];
                 }
-                // In this scenario: leftover_name is DUN Name!! <=== TODO!!!
+                // In this scenario: leftover_name is DUN Name!!
+                ECRedelineation.currentDUNName = normalizeName(leftover_name);
                 // DEBUG:
                 /*
-                out.println("DUN_CODE " + ECRedelineation.currentDUNLabel
-                        + " ==> " + leftover_name);
-                */
+                 out.println("DUN_CODE " + ECRedelineation.currentDUNCode
+                 + " ==> " + leftover_name);
+                 */
                 // DEBUG:
                 /*
                  out.println("Final NAME:POP => " + leftover_name + ":"
@@ -138,7 +154,8 @@ public class Utils {
                 // Put into key map; to be refactored; looks same :P
                 String full_dm_key = formFinalDMKey();
                 ECRedelineation.final_mapped_data.put(full_dm_key,
-                        ECRedelineation.currentDMMisaligned.trim() + ":"
+                        formFinalCSVPrefix() + ","
+                        + ECRedelineation.currentDMMisaligned.trim() + ","
                         + split_name_population[split_name_population.length - 1].replaceAll(",", "")
                 );
                 // Resets misalignment 
@@ -168,10 +185,12 @@ public class Utils {
                 // Put into key map
                 String full_dm_key = formFinalDMKey();
                 ECRedelineation.final_mapped_data.put(full_dm_key,
-                        leftover_name.trim() + ":"
+                        formFinalCSVPrefix() + ","
+                        + leftover_name.trim() + ","
                         + split_name_population[split_name_population.length - 1].replaceAll(",", "")
                 );
             }
+            // TODO: Can refactor out the mapping of final_mapped_data here ...
             // Put into error map; for future debugging; applies to BOTH scenarios
             ECRedelineation.DUNerrors++;
             ECRedelineation.error_while_parsing.put(
@@ -195,11 +214,11 @@ public class Utils {
         if (misaligned_DM_regexp_pattern_matched.find()) {
             // DEBUG: ..
             /*
-            out.println("Found possible misaligned DM: "
-                    + misaligned_DM_regexp_pattern_matched.group(1)
-                    + " POP? " + misaligned_DM_regexp_pattern_matched.group(2)
-            );
-            */
+             out.println("Found possible misaligned DM: "
+             + misaligned_DM_regexp_pattern_matched.group(1)
+             + " POP? " + misaligned_DM_regexp_pattern_matched.group(2)
+             );
+             */
             ECRedelineation.currentDMMisaligned = misaligned_DM_regexp_pattern_matched.group(1);
             return true;
         }
@@ -249,15 +268,15 @@ public class Utils {
             // DEBUG: Anamolies; do a loose matching for DM pattern
             /*
              out.println("ERROR: Needed a loose match for CODE: "
-             + ECRedelineation.currentPARLabel + "/"
-             + ECRedelineation.currentDUNLabel + "/"
+             + ECRedelineation.currentPARCode + "/"
+             + ECRedelineation.currentDUNCode + "/"
              + DM_regexp_loose_pattern_matched.group(1));
              out.println("PROB_LINE:" + single_line_of_content);
              */
             // Note down the anomalies for action later on ..
             ECRedelineation.DMerrors++;
-            String dm_error_label = ECRedelineation.currentPARLabel + "/"
-                    + ECRedelineation.currentDUNLabel + "/"
+            String dm_error_label = ECRedelineation.currentPARCode + "/"
+                    + ECRedelineation.currentDUNCode + "/"
                     + normalizeCode(
                             DM_regexp_loose_pattern_matched.group(1)
                     );
@@ -275,7 +294,7 @@ public class Utils {
         Matcher DM_regexp_pattern_matched = DM_regexp_pattern.matcher(single_line_of_content);
         Matcher DM_regexp_loose_pattern_matched = DM_regexp_loose_pattern.matcher(single_line_of_content);
         if (DM_regexp_pattern_matched.find()) {
-            ECRedelineation.currentDMLabel = normalizeCode(
+            ECRedelineation.currentDMCode = normalizeCode(
                     DM_regexp_pattern_matched.group(1)
             );
             // DEBUG:
@@ -284,25 +303,44 @@ public class Utils {
              + " NAME:" + DM_regexp_pattern_matched.group(2)
              + " POPULATION:" + DM_regexp_pattern_matched.group(3));
              */
-            return DM_regexp_pattern_matched.group(2).trim() + ":"
+            // CSVPrefix, DM_Name, Population
+            return DM_regexp_pattern_matched.group(2).trim() + ","
                     + DM_regexp_pattern_matched.group(3).replaceAll(",", "");
         } else if (DM_regexp_loose_pattern_matched.find()) {
-            ECRedelineation.currentDMLabel = normalizeCode(
+            ECRedelineation.currentDMCode = normalizeCode(
                     DM_regexp_loose_pattern_matched.group(1)
             );
-            return DM_regexp_loose_pattern_matched.group(2).trim() + ":0";
+            return DM_regexp_loose_pattern_matched.group(2).trim() + ",0";
         }
         // Left over ..
         out.println("ERR_PROB:");
-        ECRedelineation.currentDMLabel = "01";
+        ECRedelineation.currentDMCode = "01";
         // Detect and attach to last found DUN ..
-        return "UNKNOWN:0";
+        return "UNKNOWN,0";
     }
 
     public static void mapDMData(String single_line_of_content) {
         String full_dm_value = extractDataOfDM(single_line_of_content);
         String full_dm_key = formFinalDMKey();
-        ECRedelineation.final_mapped_data.put(full_dm_key, full_dm_value);
+        ECRedelineation.final_mapped_data.put(
+                full_dm_key,
+                formFinalCSVPrefix() + ","
+                + full_dm_value
+        );
+    }
+
+    public static void writeCSVFinalData() {
+        // Open file
+        // Write header
+        // FULL_CODE, PAR_CODE, PAR_NAME, DUN_CODE, DUN_NAME, DM_CODE, DM_NAME, POPULATION
+        out.println("HEAD:FULL_CODE,PAR_CODE,PAR_NAME,DUN_CODE,DUN_NAME,DM_CODE,DM_NAME,POPULATION");
+        // Iterate through data ..
+        String single_row_data = "";
+        for (Map.Entry<String, String> single_data_entry : final_mapped_data.entrySet()) {
+            single_row_data = single_data_entry.getKey() + "," + single_data_entry.getValue();
+            out.println("ROW:" + single_row_data);
+        }
+        // Close file
     }
 
     public static void writeJSONMappedData() {
@@ -319,18 +357,71 @@ public class Utils {
         return String.format("%02d", Integer.parseInt(raw_code_number));
     }
 
+    private static String normalizeName(String raw_name) {
+        // Just remove stray spaces in between names; and trim?
+        return raw_name.trim();
+    }
+
     private static String formFinalDMKey() {
         // Assumes labels are prepared before this function is called
         //  possibly dangerous ..
-        return ECRedelineation.currentPARLabel + "/"
-                + ECRedelineation.currentDUNLabel + "/"
-                + ECRedelineation.currentDMLabel;
+        return ECRedelineation.currentPARCode + "/"
+                + ECRedelineation.currentDUNCode + "/"
+                + ECRedelineation.currentDMCode;
     }
 
-    private static String formFinalDMValue() {
-        // Assumes there is PAR
-        // Assumes there is DUN
-        // Forms the DM data??
-        return null;
+    private static String formFinalCSVPrefix() {
+        return ECRedelineation.currentPARCode
+                + "," + ECRedelineation.currentPARName
+                + "," + ECRedelineation.currentDUNCode
+                + "," + ECRedelineation.currentDUNName
+                + "," + ECRedelineation.currentDMCode;
+    }
+
+    private static String formFinalJSONData() {
+        // Leave this for future use by Golang Shapefile manipulation ..
+        // Output in JSON/CSV as per below
+        // Kod Penuh	Nama DM	Bil Pengundi	Kod DUN	Nama DUN	Kod Parl	Nama Parl
+        List<Map<String, String>> bob = new ArrayList<>();
+        String dude = "2";
+        Map<String, String> whodat = map("kod_penuh", "a", "nama_dm", dude, "cook", "cc");
+        bob.add(whodat);
+        List<Map<String, String>> l;
+        l = list();
+        l.add(whodat);
+        Boon.toJson(bob);
+
+        String kod_penuh = "128/34/11";
+        String kod_dm = "11";
+        String nama_dm = "DM";
+        String bil_pengundi = "123455";
+        String kod_dun = "34";
+        String nama_dun = "DUN";
+        String kod_par = "128";
+        String nama_par = "PAR";
+
+        List<Map<String, String>> row_full_dm;
+        row_full_dm = list(
+                map("kod_penuh", kod_penuh,
+                        "kod_dun", kod_dm,
+                        "nama_dm", nama_dm,
+                        "bil_pengundi", bil_pengundi,
+                        "kod_dun", kod_dun,
+                        "nama_dun", nama_dun,
+                        "kod_par", kod_par,
+                        "nama_par", nama_par
+                )
+        );
+        row_full_dm.add(map("kod_penuh", kod_penuh,
+                "kod_dun", kod_dm,
+                "nama_dm", nama_dm,
+                "bil_pengundi", bil_pengundi,
+                "kod_dun", kod_dun,
+                "nama_dun", nama_dun,
+                "kod_par", kod_par,
+                "nama_par", nama_par
+        )
+        );
+        return Boon.toJson(row_full_dm);
     }
 }

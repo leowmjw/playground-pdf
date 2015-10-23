@@ -25,9 +25,11 @@ public class ECRedelineation {
     public static String SOURCE = "./example/Sarawak_Proposal.pdf";
     static PdfReader my_reader;
     static int currentScheduleBlock = 0;
-    static String currentPARLabel;
-    static String currentDUNLabel;
-    static String currentDMLabel;
+    static String currentPARCode;
+    static String currentPARName;
+    static String currentDUNCode;
+    static String currentDUNName;
+    static String currentDMCode;
     static String currentDMErrorLabel = "";
     static String currentDMMisaligned = "";
     static int countedDM = 0;
@@ -102,7 +104,11 @@ public class ECRedelineation {
                 };
             }
             // write down Output
-            Utils.writeJSONMappedData();
+            // No JSON output in this cut :( Leave it for interaction with golang
+            //  and shapefile mapping and manipulatons ..
+            // Utils.writeJSONMappedData();
+            // go direct to CSV ..
+            Utils.writeCSVFinalData();
             out.println("xxxxxxxXXXXXXXXXXxxxxxxxxx");
         } catch (IOException ex) {
             Logger.getLogger(ECRedelineation.class.getName()).log(Level.SEVERE, null, ex);
