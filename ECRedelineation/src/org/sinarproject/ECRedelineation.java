@@ -23,6 +23,7 @@ public class ECRedelineation {
 
     public static String SOURCE_2ND = "./example/Sarawak_2ndSchedule.pdf";
     public static String SOURCE = "./example/Sarawak_Proposal.pdf";
+    public static String RESULTS = "./results/Sarawak.csv";
     static PdfReader my_reader;
     static int currentScheduleBlock = 0;
     static String currentPARCode;

@@ -5,10 +5,14 @@
  */
 package org.sinarproject;
 
+import java.io.FileWriter;
+import java.io.IOException;
 import static java.lang.System.out;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.boon.Boon;
@@ -70,7 +74,7 @@ public class Utils {
     public static boolean isStartOfPAR(String single_line_of_content) {
         Matcher PAR_regexp_pattern_matched = PAR_regexp_pattern.matcher(single_line_of_content);
         if (PAR_regexp_pattern_matched.find()) {
-            ECRedelineation.currentPARCode = normalizeCode(
+            ECRedelineation.currentPARCode = normalizePARCode(
                     PAR_regexp_pattern_matched.group(1)
             );
             ECRedelineation.currentPARName = normalizeName(
@@ -116,6 +120,9 @@ public class Utils {
                     formFinalCSVPrefix() + ","
                     + full_dm_value
             );
+            // Don't forget to count the DM!!
+            ECRedelineation.countedDM++;
+
             return true;
         } else if (DUN_regexp_loose_pattern_matched.find()) {
 
@@ -330,17 +337,37 @@ public class Utils {
     }
 
     public static void writeCSVFinalData() {
-        // Open file
-        // Write header
-        // FULL_CODE, PAR_CODE, PAR_NAME, DUN_CODE, DUN_NAME, DM_CODE, DM_NAME, POPULATION
-        out.println("HEAD:FULL_CODE,PAR_CODE,PAR_NAME,DUN_CODE,DUN_NAME,DM_CODE,DM_NAME,POPULATION");
-        // Iterate through data ..
-        String single_row_data = "";
-        for (Map.Entry<String, String> single_data_entry : final_mapped_data.entrySet()) {
-            single_row_data = single_data_entry.getKey() + "," + single_data_entry.getValue();
-            out.println("ROW:" + single_row_data);
+        // Modified slightly example from: 
+        //  http://examples.javacodegeeks.com/core-java/writeread-csv-files-in-java-example/
+        FileWriter fileWriter;
+        fileWriter = null;
+        try {
+            // Open file
+            fileWriter = new FileWriter(ECRedelineation.RESULTS);
+            // Write header
+            // FULL_CODE, PAR_CODE, PAR_NAME, DUN_CODE, DUN_NAME, DM_CODE, DM_NAME, POPULATION
+            out.println("HEAD:FULL_CODE,PAR_CODE,PAR_NAME,DUN_CODE,DUN_NAME,DM_CODE,DM_NAME,POPULATION");
+            fileWriter.append("FULL_CODE,PAR_CODE,PAR_NAME,DUN_CODE,DUN_NAME,DM_CODE,DM_NAME,POPULATION");
+            fileWriter.append("\n");
+            // Iterate through data ..
+            String single_row_data = "";
+            for (Map.Entry<String, String> single_data_entry : final_mapped_data.entrySet()) {
+                single_row_data = single_data_entry.getKey() + "," + single_data_entry.getValue();
+                out.println("ROW:" + single_row_data);
+                fileWriter.append(single_row_data);
+                fileWriter.append("\n");
+            }
+        } catch (IOException ex) {
+            Logger.getLogger(Utils.class.getName()).log(Level.SEVERE, null, ex);
+        } finally {
+            try {
+                // Close file
+                fileWriter.flush();
+                fileWriter.close();
+            } catch (IOException ex) {
+                Logger.getLogger(Utils.class.getName()).log(Level.SEVERE, null, ex);
+            }
         }
-        // Close file
     }
 
     public static void writeJSONMappedData() {
@@ -351,6 +378,12 @@ public class Utils {
         }
     }
 
+    private static String normalizePARCode(String raw_code_number) {
+        // Fixed to double digit .. 
+        // http://stackoverflow.com/questions/4469717/left-padding-a-string-with-zeros
+        return String.format("%03d", Integer.parseInt(raw_code_number));
+    }
+
     private static String normalizeCode(String raw_code_number) {
         // Fixed to double digit .. 
         // http://stackoverflow.com/questions/4469717/left-padding-a-string-with-zeros
@@ -359,7 +392,7 @@ public class Utils {
 
     private static String normalizeName(String raw_name) {
         // Just remove stray spaces in between names; and trim?
-        return raw_name.trim();
+        return raw_name.trim().replaceAll("[ ]{1,}", " ");
     }
 
     private static String formFinalDMKey() {
