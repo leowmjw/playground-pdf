@@ -387,7 +387,7 @@ public class Utils {
     private static String normalizeCode(String raw_code_number) {
         // Fixed to double digit .. 
         // http://stackoverflow.com/questions/4469717/left-padding-a-string-with-zeros
-        return String.format("%02d", Integer.parseInt(raw_code_number));
+        return String.format("%03d", Integer.parseInt(raw_code_number));
     }
 
     private static String normalizeName(String raw_name) {

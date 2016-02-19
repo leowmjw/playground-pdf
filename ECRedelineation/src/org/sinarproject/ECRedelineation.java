@@ -107,9 +107,9 @@ public class ECRedelineation {
             // write down Output
             // No JSON output in this cut :( Leave it for interaction with golang
             //  and shapefile mapping and manipulatons ..
-            // Utils.writeJSONMappedData();
+            Utils.writeJSONMappedData();
             // go direct to CSV ..
-            Utils.writeCSVFinalData();
+            // Utils.writeCSVFinalData();
             out.println("xxxxxxxXXXXXXXXXXxxxxxxxxx");
         } catch (IOException ex) {
             Logger.getLogger(ECRedelineation.class.getName()).log(Level.SEVERE, null, ex);
